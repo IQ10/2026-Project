@@ -1,0 +1,20 @@
+<div class="page">
+  <h1 class="h3">Audit trail</h1>
+  <p class="text-secondary">Creation, submission, approval, reopening, master edits and applicability overrides.</p>
+  @if (failed()) { <div class="alert alert-danger">{{ failed() }} <div class="small">Reviewers can read the trail. Master changes are recorded by administrators.</div></div> }
+  <div class="card-panel p-0 overflow-auto">
+    <table class="table mb-0">
+      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th></tr></thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr>
+            <td class="small">{{ row.created_at }}</td>
+            <td>{{ row.user_name }}</td>
+            <td>{{ row.action }}</td>
+            <td class="small">{{ row.entity_type }} {{ row.entity_id }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,62 @@
+<div class="page">
+  <h1 class="h3">New assessment</h1>
+  <p class="text-secondary">Dealer details come from the master. The facility type loads the checklist and locks items that do not apply.</p>
+  <div class="card-panel">
+    <label class="form-label required">Assessment type</label>
+    <div class="row g-2 mb-3">
+      @for (type of types(); track type.id) {
+        <div class="col-md-6">
+          <button type="button" class="role-btn" [class.border-dark]="typeId === type.id" (click)="typeId = type.id">
+            <strong>{{ type.name }}</strong>
+            <div class="small text-secondary">{{ type.code }} · template {{ type.version }}</div>
+          </button>
+        </div>
+      }
+    </div>
+    <label class="form-label required">Dealer code</label>
+    <div class="input-group mb-2">
+      <input class="form-control" name="dealerQuery" [(ngModel)]="dealerQuery" placeholder="Search code, name or city" (keyup.enter)="searchDealers()">
+      <button class="btn btn-outline-secondary" type="button" (click)="searchDealers()">Search</button>
+    </div>
+    @if (dealers().length) {
+      <div class="list-group mb-3">
+        @for (dealer of dealers(); track dealer.id) {
+          <button type="button" class="list-group-item list-group-item-action" [class.active]="dealerId === dealer.id" (click)="chooseDealer(dealer)">
+            <strong>{{ dealer.dealer_code }}</strong> {{ dealer.dealer_name }}
+            <span class="small d-block">{{ dealer.city }}, {{ dealer.state }}</span>
+          </button>
+        }
+      </div>
+    }
+    @if (selectedDealer(); as dealer) {
+      <div class="border rounded p-3 mb-3 bg-light">
+        <div class="fw-semibold">{{ dealer.dealer_name }}</div>
+        <div>{{ dealer.address }}, {{ dealer.city }}, {{ dealer.state }} {{ dealer.postal_code }}</div>
+        <div class="small text-secondary">{{ dealer.contact_person }} {{ dealer.contact_number }} {{ dealer.email }}</div>
+        <div class="small mt-1">These fields are copied onto the assessment. Editing them here does not change the dealer master.</div>
+      </div>
+    }
+    @if (facilities().length) {
+      <label class="form-label required">Facility</label>
+      <div class="row g-2 mb-3">
+        @for (facility of facilities(); track facility.id) {
+          <div class="col-md-6">
+            <button type="button" class="role-btn" [class.border-dark]="facilityId === facility.id" (click)="facilityId = facility.id">
+              <strong>{{ facility.facility_name }}</strong>
+              <div>{{ facility.facility_type }} · {{ labels[facility.facility_type] }}</div>
+              <div class="small text-secondary">Present: {{ attributeList(facility).join(', ') || 'none recorded' }}</div>
+            </button>
+          </div>
+        }
+      </div>
+    }
+    <div class="row g-2">
+      <div class="col-md-4"><label class="form-label required">Assessment date</label><input class="form-control" type="date" name="assessmentDate" [(ngModel)]="assessmentDate"></div>
+      <div class="col-md-4"><label class="form-label">Reference number</label><input class="form-control" name="referenceNumber" [(ngModel)]="referenceNumber"></div>
+      <div class="col-md-4"><label class="form-label">Previous reference</label><input class="form-control" name="previousReference" [(ngModel)]="previousReference"></div>
+      <div class="col-12"><label class="form-label">General remarks</label><textarea class="form-control" name="generalRemarks" rows="2" [(ngModel)]="generalRemarks"></textarea></div>
+    </div>
+    @if (error()) { <div class="alert alert-danger mt-3 mb-0">{{ error() }}</div> }
+    <button class="btn btn-navy mt-3" type="button" [disabled]="busy()" (click)="create()">{{ busy() ? 'Creating…' : 'Create and open checklist' }}</button>
+  </div>
+</div>

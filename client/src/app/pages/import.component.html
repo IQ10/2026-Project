@@ -1,0 +1,23 @@
+<div class="page">
+  <h1 class="h3">Checklist import</h1>
+  <p class="text-secondary">Preview flags duplicate numbers, missing wording and missing 1S, 2S or 3S applicability before anything is written. A missing rule is an error, not a silent NA.</p>
+  <button class="btn btn-navy mb-3" type="button" (click)="validate()" [disabled]="loading()">Validate the active template</button>
+  @if (flags().length) {
+    <div class="card-panel mb-3" style="max-height: 320px; overflow: auto">
+      <strong>{{ flags().length }} flags</strong>
+      @for (flag of flags(); track flag.message + (flag.itemNumber || 0)) {
+        <div class="small py-1"><span class="pill" [class.bad]="flag.severity === 'error'" [class.warn]="flag.severity === 'warning'">{{ flag.severity }}</span> Item {{ flag.itemNumber }} — {{ flag.message }}</div>
+      }
+    </div>
+  }
+  <div class="card-panel">
+    <label class="form-label">JSON checklist</label>
+    <textarea class="form-control mb-2" rows="8" name="raw" [(ngModel)]="raw"></textarea>
+    <button class="btn btn-outline-secondary me-2" type="button" (click)="runPreview()">Preview</button>
+    <button class="btn btn-navy" type="button" (click)="commit()">Commit as draft template</button>
+    @if (preview(); as result) {
+      <div class="mt-3">{{ result.items }} items, {{ result.sections }} sections. {{ result.ready ? 'Ready to commit.' : 'Fix errors before commit.' }}</div>
+      @for (flag of result.flags; track flag.message) { <div class="small">{{ flag.severity }}: {{ flag.message }}</div> }
+    }
+  </div>
+</div>

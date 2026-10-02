@@ -1,0 +1,142 @@
+<div class="page">
+  <h1 class="h3">Master data</h1>
+  <p class="text-secondary">Dealers, facilities, templates and applicability live here. Changing a master does not rewrite an assessment that has already been created.</p>
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    @for (name of ['dealers', 'facilities', 'checklist', 'applicability', 'risks', 'people']; track name) {
+      <button class="btn btn-sm" [class.btn-navy]="panel() === name" [class.btn-outline-secondary]="panel() !== name" type="button" (click)="panel.set(name)">{{ name }}</button>
+    }
+  </div>
+
+  @if (panel() === 'dealers') {
+    <button class="btn btn-navy mb-2" type="button" (click)="newDealer()">Add dealer</button>
+    <div class="card-panel p-0 overflow-auto">
+      <table class="table mb-0">
+        <thead><tr><th>Code</th><th>Name</th><th>City</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (row of dealers(); track row['id']) {
+            <tr>
+              <td>{{ row['dealer_code'] }}</td><td>{{ row['dealer_name'] }}</td><td>{{ row['city'] }}</td><td>{{ row['status'] }}</td>
+              <td><button class="btn btn-sm btn-outline-secondary" type="button" (click)="editDealer(row)">Edit</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (panel() === 'facilities') {
+    <button class="btn btn-navy mb-2" type="button" (click)="newFacility()">Add facility</button>
+    <div class="card-panel p-0 overflow-auto">
+      <table class="table mb-0">
+        <thead><tr><th>Dealer</th><th>Facility</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody>
+          @for (row of facilities(); track row['id']) {
+            <tr><td>{{ row['dealer_code'] }}</td><td>{{ row['facility_name'] }}</td><td>{{ row['facility_type'] }}</td><td>{{ row['status'] }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (panel() === 'checklist') {
+    <input class="form-control mb-2" name="query" [(ngModel)]="query" placeholder="Search item number or activity">
+    @for (row of filteredItems(); track row['id']) {
+      <div class="item-card">
+        <strong>{{ row['item_number'] }}. {{ row['activity_description'] }}</strong>
+        @if (row['source_review']) { <span class="pill warn ms-2">Review source</span> }
+        <p class="small mb-2">{{ row['requirement_description'] }}</p>
+        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="editItem(row)">Edit wording</button>
+      </div>
+    }
+  }
+
+  @if (panel() === 'applicability') {
+    <select class="form-select mb-2" style="max-width: 160px" name="facilityType" [(ngModel)]="facilityType">
+      <option>1S</option><option>2S</option><option>3S</option>
+    </select>
+    <p class="small text-secondary">Rules marked for review were inferred from facility definitions because the source report is one 3S visit.</p>
+    @for (row of filteredRules(); track row['id']) {
+      <div class="d-flex gap-2 align-items-center mb-2">
+        <span style="width: 70px">Item {{ row['checklist_item_id'] }}</span>
+        <select class="form-select" [(ngModel)]="row['applicability_status']" [name]="'st' + row['id']">
+          <option>Applicable</option><option>Not Applicable</option><option>Conditional</option>
+        </select>
+        <input class="form-control" [(ngModel)]="row['conditional_attribute']" [name]="'at' + row['id']" placeholder="Attribute if conditional">
+        <button class="btn btn-sm btn-navy" type="button" (click)="saveRule(row)">Save</button>
+      </div>
+    }
+  }
+
+  @if (panel() === 'risks') {
+    <div class="card-panel">
+      @for (row of risks(); track row['id']) {
+        <div class="mb-2"><strong>{{ row['name'] }}</strong> · severity {{ row['severity_level'] }}<div class="small text-secondary">{{ row['description'] }}</div></div>
+      }
+    </div>
+  }
+
+  @if (panel() === 'people') {
+    <button class="btn btn-navy mb-2" type="button" (click)="newUser()">Add user</button>
+    <button class="btn btn-outline-secondary mb-2 ms-2" type="button" (click)="newType()">Add assessment type</button>
+    <div class="card-panel p-0 overflow-auto mb-3">
+      <table class="table mb-0"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
+        <tbody>@for (row of users(); track row['id']) { <tr><td>{{ row['name'] }}</td><td>{{ row['email'] }}</td><td>{{ row['role_name'] }}</td><td>{{ row['status'] }}</td></tr> }</tbody>
+      </table>
+    </div>
+    @for (row of types(); track row['id']) {
+      <div class="small">{{ row['code'] }} · {{ row['name'] }} · {{ row['approval_status'] }}</div>
+    }
+  }
+</div>
+
+@if (editing(); as row) {
+  <div class="position-fixed top-0 start-0 w-100 h-100" style="background: rgba(11,31,51,.45); z-index: 30" (click)="editing.set(null)"></div>
+  <div class="card-panel position-fixed top-50 start-50 translate-middle" style="z-index: 31; width: min(560px, calc(100% - 24px)); max-height: 86vh; overflow: auto">
+    <h2 class="h5">{{ row['id'] ? 'Edit' : 'Create' }} {{ row['kind'] }}</h2>
+    @if (row['kind'] === 'dealer') {
+      <label class="form-label required">Code</label><input class="form-control mb-2" [ngModel]="text(row, 'dealer_code')" (ngModelChange)="setText('dealer_code', $event)" name="dealer_code">
+      <label class="form-label required">Name</label><input class="form-control mb-2" [ngModel]="text(row, 'dealer_name')" (ngModelChange)="setText('dealer_name', $event)" name="dealer_name">
+      <label class="form-label required">Address</label><input class="form-control mb-2" [ngModel]="text(row, 'address')" (ngModelChange)="setText('address', $event)" name="address">
+      <div class="row g-2">
+        <div class="col"><label class="form-label required">City</label><input class="form-control" [ngModel]="text(row, 'city')" (ngModelChange)="setText('city', $event)" name="city"></div>
+        <div class="col"><label class="form-label required">State</label><input class="form-control" [ngModel]="text(row, 'state')" (ngModelChange)="setText('state', $event)" name="state"></div>
+      </div>
+      <label class="form-label mt-2">Status</label>
+      <select class="form-select" [ngModel]="text(row, 'status')" (ngModelChange)="setText('status', $event)" name="status"><option>Active</option><option>Inactive</option></select>
+    }
+    @if (row['kind'] === 'facility') {
+      <label class="form-label required">Dealer</label>
+      <select class="form-select mb-2" [ngModel]="row['dealer_id']" (ngModelChange)="setText('dealer_id', $event)" name="dealer_id">
+        @for (dealer of dealers(); track dealer['id']) { <option [ngValue]="dealer['id']">{{ dealer['dealer_code'] }} {{ dealer['dealer_name'] }}</option> }
+      </select>
+      <label class="form-label required">Name</label><input class="form-control mb-2" [ngModel]="text(row, 'facility_name')" (ngModelChange)="setText('facility_name', $event)" name="facility_name">
+      <label class="form-label required">Type</label>
+      <select class="form-select mb-2" [ngModel]="text(row, 'facility_type')" (ngModelChange)="setText('facility_type', $event)" name="facility_type"><option>1S</option><option>2S</option><option>3S</option></select>
+      @for (attr of attributes; track attr[0]) {
+        <div class="form-check"><input class="form-check-input" type="checkbox" [checked]="attrOn(attr[0])" (change)="toggleAttr(attr[0], $any($event.target).checked)" [id]="attr[0]"><label class="form-check-label" [for]="attr[0]">{{ attr[1] }}</label></div>
+      }
+    }
+    @if (row['kind'] === 'user') {
+      <label class="form-label required">Name</label><input class="form-control mb-2" [ngModel]="text(row, 'name')" (ngModelChange)="setText('name', $event)" name="name">
+      <label class="form-label required">Email</label><input class="form-control mb-2" [ngModel]="text(row, 'email')" (ngModelChange)="setText('email', $event)" name="email">
+      <label class="form-label required">Password</label><input class="form-control mb-2" [ngModel]="text(row, 'password')" (ngModelChange)="setText('password', $event)" name="password">
+      <label class="form-label">Role</label>
+      <select class="form-select" [ngModel]="row['role_id']" (ngModelChange)="setText('role_id', $event)" name="role_id">
+        @for (role of roles(); track role.id) { <option [ngValue]="role.id">{{ role.name }}</option> }
+      </select>
+    }
+    @if (row['kind'] === 'type') {
+      <label class="form-label required">Code</label><input class="form-control mb-2" [ngModel]="text(row, 'code')" (ngModelChange)="setText('code', $event)" name="code">
+      <label class="form-label required">Name</label><input class="form-control mb-2" [ngModel]="text(row, 'name')" (ngModelChange)="setText('name', $event)" name="name">
+      <label class="form-label">Description</label><textarea class="form-control" [ngModel]="text(row, 'description')" (ngModelChange)="setText('description', $event)" name="description"></textarea>
+    }
+    @if (row['kind'] === 'item') {
+      <label class="form-label">Activity</label><textarea class="form-control mb-2" [ngModel]="text(row, 'activity_description')" (ngModelChange)="setText('activity_description', $event)" name="activity_description"></textarea>
+      <label class="form-label">Requirement</label><textarea class="form-control" rows="4" [ngModel]="text(row, 'requirement_description')" (ngModelChange)="setText('requirement_description', $event)" name="requirement_description"></textarea>
+    }
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-navy" type="button" (click)="save()">Save</button>
+      <button class="btn btn-outline-secondary" type="button" (click)="editing.set(null)">Cancel</button>
+    </div>
+  </div>
+}

@@ -1,0 +1,9 @@
+{
+  "name": "esa-desk",
+  "private": true,
+  "scripts": {
+    "seed": "npm run seed --prefix server",
+    "start": "npm start --prefix server",
+    "client": "npm start --prefix client -- --port 4318 --host 0.0.0.0"
+  }
+}

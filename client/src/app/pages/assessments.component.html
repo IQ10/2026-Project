@@ -1,0 +1,47 @@
+<div class="page">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h3 mb-1">{{ queue ? 'Review queue' : 'Assessments' }}</h1>
+      <p class="text-secondary mb-0">{{ queue ? 'Submitted visits waiting for a reviewer.' : 'Search by assessment number or dealer code.' }}</p>
+    </div>
+    @if (!queue) { <a class="btn btn-navy" routerLink="/assessments/new">New assessment</a> }
+  </div>
+  <form class="card-panel mb-3" (ngSubmit)="load()">
+    <div class="row g-2">
+      <div class="col-md-4"><input class="form-control" name="q" [(ngModel)]="q" placeholder="Assessment ID or dealer code"></div>
+      <div class="col-md-2">
+        <select class="form-select" name="status" [(ngModel)]="status">
+          <option value="">Any status</option>
+          <option>Draft</option><option>In Progress</option><option>Submitted</option><option>Returned</option><option>Approved</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2"><input class="form-control" type="date" name="from" [(ngModel)]="from"></div>
+      <div class="col-6 col-md-2"><input class="form-control" type="date" name="to" [(ngModel)]="to"></div>
+      <div class="col-md-2"><button class="btn btn-navy w-100">Search</button></div>
+    </div>
+  </form>
+  @if (loading()) { <div class="card-panel">Loading assessments…</div> }
+  @if (failed()) { <div class="alert alert-danger">{{ failed() }}</div> }
+  @if (!loading() && !rows().length) {
+    <div class="card-panel text-secondary">Nothing is in this list yet.</div>
+  }
+  @if (rows().length) {
+    <div class="card-panel p-0 overflow-auto">
+      <table class="table mb-0 align-middle">
+        <thead><tr><th>Assessment</th><th>Dealer</th><th>Date</th><th>Facility</th><th>Surveyor</th><th>Status</th></tr></thead>
+        <tbody>
+          @for (row of rows(); track row.id) {
+            <tr>
+              <td><a [routerLink]="['/assessments', row.id]">{{ row.assessment_number }}</a><div class="small text-secondary">{{ row.assessment_type }}</div></td>
+              <td>{{ row.dealer_code }}<div class="small text-secondary">{{ row.dealer_name }}, {{ row.city }}</div></td>
+              <td>{{ day(row.assessment_date) }}</td>
+              <td>{{ row.facility_type_snapshot }}</td>
+              <td>{{ row.surveyor_name }}</td>
+              <td><span class="pill" [class.good]="row.status === 'Approved'" [class.warn]="row.status === 'Submitted' || row.status === 'Returned'">{{ row.status }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

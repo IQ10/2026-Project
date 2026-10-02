@@ -1,0 +1,73 @@
+<div class="page">
+  <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="h3 mb-1">Assessment desk</h1>
+      <p class="text-secondary mb-0">Live counts from the register. NA items stay out of the compliance rate.</p>
+    </div>
+  </div>
+  <form class="card-panel mb-3" (ngSubmit)="load()">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-3"><label class="form-label">From</label><input class="form-control" type="date" name="from" [(ngModel)]="filters.from"></div>
+      <div class="col-6 col-md-3"><label class="form-label">To</label><input class="form-control" type="date" name="to" [(ngModel)]="filters.to"></div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Facility</label>
+        <select class="form-select" name="facilityType" [(ngModel)]="filters.facilityType">
+          <option value="">All</option><option>1S</option><option>2S</option><option>3S</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Status</label>
+        <select class="form-select" name="status" [(ngModel)]="filters.status">
+          <option value="">All</option>
+          <option>Draft</option><option>In Progress</option><option>Submitted</option><option>Returned</option><option>Approved</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2"><button class="btn btn-navy w-100" type="submit">Apply</button></div>
+    </div>
+  </form>
+
+  @if (loading()) { <div class="card-panel">Loading the register…</div> }
+  @if (failed()) { <div class="alert alert-danger">{{ failed() }}</div> }
+  @if (data(); as dash) {
+    <div class="stat-grid mb-3">
+      <div class="stat"><div class="label">Total</div><div class="value">{{ dash.totals.total }}</div></div>
+      <div class="stat"><div class="label">Draft / in progress</div><div class="value">{{ dash.totals.draft + dash.totals.in_progress }}</div></div>
+      <div class="stat"><div class="label">Awaiting review</div><div class="value">{{ dash.totals.submitted }}</div></div>
+      <div class="stat"><div class="label">Approved</div><div class="value">{{ dash.totals.approved }}</div></div>
+      <div class="stat alert"><div class="label">Open findings</div><div class="value">{{ dash.findings.findings || 0 }}</div></div>
+      <div class="stat alert"><div class="label">Critical risk</div><div class="value">{{ dash.findings.critical || 0 }}</div></div>
+      <div class="stat"><div class="label">Major risk</div><div class="value">{{ dash.findings.major || 0 }}</div></div>
+      <div class="stat"><div class="label">Returned</div><div class="value">{{ dash.totals.returned }}</div></div>
+    </div>
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="card-panel h-100">
+          <h2 class="h6">By facility type</h2>
+          @for (row of dash.byFacility; track row.facility_type) {
+            <div class="bar-row"><span>{{ row.facility_type }}</span><div class="bar"><span [style.width.%]="(row.total / maxOf(dash.byFacility)) * 100"></span></div><b>{{ row.total }}</b></div>
+          }
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card-panel h-100">
+          <h2 class="h6">By dealer</h2>
+          @for (row of dash.byDealer; track row.dealer_code) {
+            <div class="bar-row"><span>{{ row.dealer_code }}</span><div class="bar"><span [style.width.%]="(row.total / maxOf(dash.byDealer)) * 100"></span></div><b>{{ row.total }}</b></div>
+          }
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card-panel h-100">
+          <h2 class="h6">Recent</h2>
+          @for (row of dash.recent; track row.id) {
+            <a class="d-flex justify-content-between text-decoration-none text-reset py-2 border-bottom" [routerLink]="['/assessments', row.id]">
+              <span><strong>{{ row.dealer_code }}</strong> {{ row.dealer_name }}<br><span class="small text-secondary">{{ row.assessment_number }} · {{ day(row.assessment_date) }}</span></span>
+              <span class="pill">{{ row.status }}</span>
+            </a>
+          }
+          @if (!dash.recent.length) { <p class="text-secondary mb-0">No assessments match these filters.</p> }
+        </div>
+      </div>
+    </div>
+  }
+</div>

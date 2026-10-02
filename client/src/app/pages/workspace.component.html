@@ -1,0 +1,204 @@
+<div class="page">
+  @if (failed()) { <div class="alert alert-danger">{{ failed() }}</div> }
+  @if (detail(); as data) {
+    <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+      <div>
+        <div class="small text-secondary">{{ data.assessment.assessment_type }} · template {{ data.assessment.template_version_snapshot }}</div>
+        <h1 class="h3 mb-1">{{ data.assessment.assessment_number }}</h1>
+        <div>{{ data.assessment.dealer_details_snapshot.dealer_code }} · {{ data.assessment.dealer_details_snapshot.dealer_name }}</div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-start">
+        <span class="pill gold">{{ data.assessment.status }}</span>
+        <span class="pill">{{ data.assessment.facility_type_snapshot }}</span>
+        @if (auth.has('reports.export')) {
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="download('pdf')">PDF</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="download('xlsx')">Excel</button>
+        }
+      </div>
+    </div>
+    <div class="stat-grid mb-3">
+      <div class="stat"><div class="label">Applicable</div><div class="value">{{ data.summary.applicable }}</div></div>
+      <div class="stat"><div class="label">Answered</div><div class="value">{{ data.summary.completedApplicable }}</div></div>
+      <div class="stat"><div class="label">NA</div><div class="value">{{ data.summary.na }}</div></div>
+      <div class="stat"><div class="label">Compliance</div><div class="value">{{ data.summary.compliancePercent }}%</div></div>
+    </div>
+    @if (data.assessment.return_remarks) { <div class="alert alert-warning">Returned: {{ data.assessment.return_remarks }}</div> }
+    @if (data.summary.unconfigured) { <div class="alert alert-danger">{{ data.summary.unconfigured }} items have no applicability rule. They were not marked NA. An administrator needs to configure them.</div> }
+    @if (errors().length) {
+      <div class="alert alert-danger">
+        @for (error of errors(); track error.message) {
+          <div><button class="btn btn-link p-0" type="button" (click)="jump(error.itemNumber)">{{ error.message }}</button></div>
+        }
+      </div>
+    }
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+      <button class="btn btn-sm" [class.btn-navy]="tab() === 'checklist'" [class.btn-outline-secondary]="tab() !== 'checklist'" type="button" (click)="tab.set('checklist')">Checklist</button>
+      <button class="btn btn-sm" [class.btn-navy]="tab() === 'header'" [class.btn-outline-secondary]="tab() !== 'header'" type="button" (click)="tab.set('header')">Header</button>
+      <button class="btn btn-sm" [class.btn-navy]="tab() === 'narrative'" [class.btn-outline-secondary]="tab() !== 'narrative'" type="button" (click)="tab.set('narrative')">Narrative</button>
+      <button class="btn btn-sm" [class.btn-navy]="tab() === 'measure'" [class.btn-outline-secondary]="tab() !== 'measure'" type="button" (click)="tab.set('measure')">Measurements</button>
+      <button class="btn btn-sm" [class.btn-navy]="tab() === 'history'" [class.btn-outline-secondary]="tab() !== 'history'" type="button" (click)="tab.set('history')">History</button>
+      <span class="ms-auto small text-secondary align-self-center">{{ saveState() }}</span>
+      @if (editable()) { <button class="btn btn-sm btn-gold" type="button" (click)="submit()">Submit for review</button> }
+      @if (auth.has('assessments.review') && data.assessment.status === 'Submitted') {
+        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="review('return')">Return</button>
+        <button class="btn btn-sm btn-navy" type="button" (click)="review('approve')">Approve</button>
+      }
+      @if (auth.has('assessments.reopen') && data.assessment.status === 'Approved') {
+        <button class="btn btn-sm btn-outline-danger" type="button" (click)="review('reopen')">Reopen</button>
+      }
+    </div>
+
+    @if (tab() === 'header') {
+      <div class="card-panel">
+        <div class="row g-2">
+          <div class="col-md-4"><label class="form-label">Surveyor</label><input class="form-control" [value]="data.assessment.surveyor_name + ' · ' + (data.assessment.surveyor_employee_id || '')" disabled></div>
+          <div class="col-md-4"><label class="form-label">Dealer</label><input class="form-control" [value]="data.assessment.dealer_details_snapshot.dealer_name" disabled></div>
+          <div class="col-md-4"><label class="form-label">Facility type</label><input class="form-control" [value]="data.assessment.facility_type_snapshot" disabled></div>
+          <div class="col-12"><label class="form-label">Address snapshot</label><input class="form-control" [value]="data.assessment.dealer_details_snapshot.address + ', ' + data.assessment.dealer_details_snapshot.city + ', ' + data.assessment.dealer_details_snapshot.state" disabled></div>
+          <div class="col-md-4"><label class="form-label">Contact</label><input class="form-control" [value]="data.assessment.contact_person_snapshot || ''" disabled></div>
+          <div class="col-md-4"><label class="form-label">Phone</label><input class="form-control" [value]="data.assessment.contact_number_snapshot || ''" disabled></div>
+          <div class="col-md-4"><label class="form-label">Email</label><input class="form-control" [value]="data.assessment.contact_email_snapshot || ''" disabled></div>
+          <div class="col-md-4"><label class="form-label">Date</label><input class="form-control" type="date" name="date" [(ngModel)]="data.assessment.assessment_date" [disabled]="!editable()"></div>
+          <div class="col-md-4"><label class="form-label">Reference</label><input class="form-control" name="ref" [(ngModel)]="data.assessment.reference_number" [disabled]="!editable()"></div>
+          <div class="col-md-4"><label class="form-label">Previous reference</label><input class="form-control" name="prev" [(ngModel)]="data.assessment.previous_reference" [disabled]="!editable()"></div>
+          <div class="col-12"><label class="form-label">General remarks</label><textarea class="form-control" name="remarks" rows="3" [(ngModel)]="data.assessment.general_remarks" [disabled]="!editable()"></textarea></div>
+        </div>
+        @if (editable()) { <button class="btn btn-navy mt-3" type="button" (click)="saveHeader()">Save header</button> }
+      </div>
+    }
+
+    @if (tab() === 'checklist') {
+      <div class="mb-2"><input class="form-control" placeholder="Search this checklist" name="query" [(ngModel)]="query"></div>
+      <div class="checklist-layout">
+        <div class="card-panel section-nav">
+          @for (section of data.sections; track section.id; let i = $index) {
+            <button class="section-link" [class.active]="activeSection() === i" type="button" (click)="activeSection.set(i)">
+              <span>{{ section.name }}</span><small>{{ sectionProgress(section) }}</small>
+            </button>
+          }
+        </div>
+        <div>
+          @if (data.sections[activeSection()]; as section) {
+            <h2 class="h5">{{ section.name }}</h2>
+            @for (item of visibleItems(section); track item.id) {
+              <article class="item-card" [class.na]="item.locked_na" [class.flag]="item.source_review" [id]="'item-' + item.item_number">
+                <div class="d-flex justify-content-between gap-2">
+                  <strong>{{ item.item_number }}. {{ item.activity_description }}</strong>
+                  @if (item.locked_na) { <span class="pill na">NA</span> }
+                  @else if (item.applicability_status === 'Unconfigured') { <span class="pill bad">Unconfigured</span> }
+                  @else { <span class="pill good">Applicable</span> }
+                </div>
+                <p class="small text-secondary mb-2">{{ item.requirement_description }}</p>
+                @if (item.applicability_status !== 'Applicable' && item.applicability_snapshot?.reason && !item.applicability_snapshot?.reason?.startsWith('Initial ')) {
+                <p class="small mb-2">{{ item.applicability_snapshot?.reason }}</p>
+              }
+                @if (item.source_review) { <p class="small text-warning-emphasis">Source wording or colour code needs administrator confirmation.</p> }
+                <div class="response-row mb-2">
+                  @for (option of options(); track option.code) {
+                    @if (option.selectable_by_surveyor || item.response_code === option.code) {
+                      <button type="button" [class.selected]="item.response_code === option.code" [class]="option.code" [disabled]="!editable() || item.locked_na || !option.selectable_by_surveyor" (click)="choose(item, option.code)">{{ option.label }}</button>
+                    }
+                  }
+                </div>
+                @if (!item.locked_na) {
+                  <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label">Observation</label><textarea class="form-control" rows="2" [(ngModel)]="item.observation" [name]="'o' + item.id" [disabled]="!editable()" (ngModelChange)="queue(item)"></textarea></div>
+                    <div class="col-md-6"><label class="form-label">Recommendation</label><textarea class="form-control" rows="2" [(ngModel)]="item.recommendation" [name]="'r' + item.id" [disabled]="!editable()" (ngModelChange)="queue(item)"></textarea></div>
+                    <div class="col-md-4">
+                      <label class="form-label">Risk rating</label>
+                      <select class="form-select" [(ngModel)]="item.risk_rating_id" [name]="'k' + item.id" [disabled]="!editable()" (ngModelChange)="queue(item)">
+                        <option [ngValue]="null">Select</option>
+                        @for (risk of risks(); track risk.id) { <option [ngValue]="risk.id">{{ risk.name }}</option> }
+                      </select>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Surveyor remarks</label><input class="form-control" [(ngModel)]="item.remarks" [name]="'m' + item.id" [disabled]="!editable()" (ngModelChange)="queue(item)"></div>
+                  </div>
+                  @if (editable()) {
+                    <label class="btn btn-sm btn-outline-secondary mt-2">Add evidence<input type="file" hidden (change)="upload(item, $event)"></label>
+                  }
+                }
+                @for (file of item.attachments; track file.id) {
+                  <button class="btn btn-link btn-sm" type="button" (click)="openFile(file.id)">{{ file.file_name }}</button>
+                }
+                @if (auth.has('masters.manage') && editable()) {
+                  <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" (click)="override(item, true)">Mark NA</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" (click)="override(item, false)">Mark applicable</button>
+                  </div>
+                }
+                @if (auth.has('assessments.review')) {
+                  <label class="form-label mt-2">Review remarks</label>
+                  <textarea class="form-control" rows="2" [(ngModel)]="item.review_remarks" [name]="'rv' + item.id" [disabled]="data.assessment.status !== 'Submitted'"></textarea>
+                  @if (data.assessment.status === 'Submitted') { <button class="btn btn-sm btn-outline-secondary mt-1" type="button" (click)="saveReview(item)">Save review remark</button> }
+                }
+              </article>
+            }
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-outline-secondary" type="button" [disabled]="activeSection() === 0" (click)="activeSection.set(activeSection() - 1)">Previous section</button>
+              <button class="btn btn-outline-secondary" type="button" [disabled]="activeSection() === data.sections.length - 1" (click)="activeSection.set(activeSection() + 1)">Next section</button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (tab() === 'narrative') {
+      <div class="card-panel">
+        @for (row of data.narratives; track row.code) {
+          <label class="form-label">{{ row.title }}</label>
+          <textarea class="form-control mb-2" rows="4" [(ngModel)]="row.body" [name]="row.code" [disabled]="!editable()"></textarea>
+          @if (editable()) { <button class="btn btn-sm btn-outline-secondary mb-3" type="button" (click)="saveNarrative(row)">Save {{ row.title }}</button> }
+        }
+        @if (!data.narratives.length) { <p class="text-secondary">No narrative has been written for this visit yet.</p> }
+        @if (editable()) { <button class="btn btn-sm btn-navy" type="button" (click)="addNarrative()">Add note</button> }
+      </div>
+    }
+
+    @if (tab() === 'measure') {
+      <div class="card-panel">
+        <h2 class="h6">Equipment on this visit</h2>
+        @for (row of data.equipment; track $index) {
+          <div class="row g-2 mb-2">
+            <div class="col-md-3"><input class="form-control" [(ngModel)]="row.equipment_type" [name]="'et' + $index" placeholder="Type" [disabled]="!editable()"></div>
+            <div class="col-md-3"><input class="form-control" [(ngModel)]="row.label" [name]="'el' + $index" placeholder="Label" [disabled]="!editable()"></div>
+            <div class="col-md-3"><input class="form-control" [(ngModel)]="row.identifier" [name]="'ei' + $index" placeholder="Identifier" [disabled]="!editable()"></div>
+            <div class="col-md-3"><input class="form-control" [(ngModel)]="row.rating" [name]="'er' + $index" placeholder="Rating" [disabled]="!editable()"></div>
+          </div>
+        }
+        <h2 class="h6 mt-3">Thermography</h2>
+        @for (row of data.thermography; track $index) {
+          <div class="row g-2 mb-2">
+            <div class="col-md-3"><input class="form-control" [(ngModel)]="row['area']" [name]="'ta' + $index" placeholder="Area" [disabled]="!editable()"></div>
+            <div class="col-md-3"><input class="form-control" [(ngModel)]="row['equipment']" [name]="'te' + $index" placeholder="Equipment" [disabled]="!editable()"></div>
+            <div class="col-md-2"><input class="form-control" [(ngModel)]="row['ambient_c']" [name]="'tb' + $index" placeholder="Ambient" [disabled]="!editable()"></div>
+            <div class="col-md-2"><input class="form-control" [(ngModel)]="row['hotspot_c']" [name]="'th' + $index" placeholder="Hotspot" [disabled]="!editable()"></div>
+            <div class="col-md-2"><input class="form-control" [(ngModel)]="row['severity']" [name]="'ts' + $index" placeholder="Severity" [disabled]="!editable()"></div>
+          </div>
+        }
+        <h2 class="h6 mt-3">Neutral to earth voltage</h2>
+        @for (row of data.neutralEarth; track $index) {
+          <div class="row g-2 mb-2">
+            <div class="col-md-4"><input class="form-control" [(ngModel)]="row['area']" [name]="'na' + $index" placeholder="Area" [disabled]="!editable()"></div>
+            <div class="col-md-4"><input class="form-control" [(ngModel)]="row['equipment']" [name]="'ne' + $index" placeholder="Equipment" [disabled]="!editable()"></div>
+            <div class="col-md-4"><input class="form-control" [(ngModel)]="row['voltage_v']" [name]="'nv' + $index" placeholder="Volts" [disabled]="!editable()"></div>
+          </div>
+        }
+        @if (editable()) {
+          <button class="btn btn-sm btn-outline-secondary me-2" type="button" (click)="addRow('equipment')">Add equipment</button>
+          <button class="btn btn-sm btn-outline-secondary me-2" type="button" (click)="addRow('thermography')">Add thermography</button>
+          <button class="btn btn-sm btn-outline-secondary me-2" type="button" (click)="addRow('neutralEarth')">Add voltage</button>
+          <button class="btn btn-sm btn-navy" type="button" (click)="saveMeasurements()">Save measurements</button>
+        }
+      </div>
+    }
+
+    @if (tab() === 'history') {
+      <div class="card-panel">
+        @for (row of data.reviews; track row.created_at + row.action) {
+          <div class="border-bottom py-2"><strong>{{ row.action }}</strong> · {{ row.user_name }}<div class="small">{{ row.remarks }}</div></div>
+        }
+        @if (!data.reviews.length) { <p class="text-secondary mb-0">No review actions yet.</p> }
+      </div>
+    }
+  }
+</div>
