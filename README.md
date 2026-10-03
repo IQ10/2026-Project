@@ -50,6 +50,20 @@ npx ng serve --port 4318 --host 0.0.0.0
 
 Open http://127.0.0.1:4318 . The API listens on port 4317. The dev server proxies `/api` to it.
 
+## Host the API in local IIS
+
+The API is Node.js. IIS starts `node.exe` with `server/web.config`. Stop any `npm start` window first so port 4317 is free.
+
+1. Install [Node.js](https://nodejs.org/) and, in IIS, install [HttpPlatformHandler](https://www.iis.net/downloads/microsoft/httpplatformhandler).
+2. In the `server` folder run `npm install` once.
+3. Edit `server/web.config` if your SQL login is not `sa` / `Esa@Sql#2026!`.
+4. In IIS Manager, add an Application Pool named `EsaApi`. Set .NET CLR version to **No Managed Code**.
+5. Add a Website named `EsaApi`. Set the physical path to the `server` folder, the binding to `http` and port **4317**, and the application pool to `EsaApi`.
+6. Give the application pool identity permission to read the `server` folder and write to `server\logs`.
+7. Browse http://127.0.0.1:4317/api/health . A working site returns `{"ok":true,"database":"SQL Server"}`.
+
+If the health page fails, open the newest file in `server\logs`. The Angular app on port 4318 can keep using this IIS site because it still calls port 4317.
+
 ## Sign-in
 
 | Role | Email | Password |
