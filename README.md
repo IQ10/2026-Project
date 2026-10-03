@@ -24,7 +24,14 @@ DB_NAME=EsaManagement
 
 If SQL Server is already installed on your machine, set those variables to your instance and sign-in. The API does not create a login for you.
 
-3. Load masters and the checklist:
+3. Load masters and the checklist.
+
+In SQL Server Management Studio, open and run these two scripts in order:
+
+1. `database/001_schema.sql` creates the empty database and tables.
+2. `database/002_data.sql` fills dealers, the 165-item checklist, users, and the three sample assessments.
+
+Or load the same data from the API folder:
 
 ```bash
 cd server
