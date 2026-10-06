@@ -4,6 +4,11 @@ using Dapper;
 using Esa.Api;
 
 DotEnv.Load();
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APP_POOL_ID")))
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "4317";
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{port}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -14,11 +19,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 12 * 1024 * 1024);
-if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APP_POOL_ID")))
-{
-    var port = Environment.GetEnvironmentVariable("PORT") ?? "4317";
-    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{port}");
-}
 
 var app = builder.Build();
 var db = new Database();

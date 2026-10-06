@@ -517,18 +517,24 @@ assessmentRouter.post('/:id/attachments', upload.single('file'), async (req, res
     const current = await assertEditable(pool, Number(req.params.id), req.user);
     if (current.error) return res.status(current.error).json({ error: current.message });
     if (!req.file) return res.status(400).json({ error: 'Choose a file to upload.' });
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!allowed.includes(req.file.mimetype)) return res.status(400).json({ error: 'Upload a JPEG, PNG, WEBP or PDF file.' });
+    const mime = String(req.file.mimetype || '').split(';')[0].trim().toLowerCase();
+    const ext = (req.file.originalname.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+    const fileType = mime === 'image/jpg' || mime === 'image/jpeg' || ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+      : mime === 'image/png' || ext === '.png' ? 'image/png'
+        : mime === 'image/webp' || ext === '.webp' ? 'image/webp'
+          : null;
+    if (!fileType) return res.status(400).json({ error: 'Upload a JPEG, PNG or WEBP photo.' });
+    if (req.file.size > 12 * 1024 * 1024) return res.status(400).json({ error: 'That photo is too large. Take it again or choose a smaller image.' });
     const itemId = req.body.checklist_item_id ? Number(req.body.checklist_item_id) : null;
     const inserted = await pool.request()
       .input('a', sql.Int, current.id)
       .input('i', sql.Int, itemId)
       .input('name', sql.NVarChar, req.file.originalname)
-      .input('type', sql.NVarChar, req.file.mimetype)
+      .input('type', sql.NVarChar, fileType)
       .input('data', sql.VarBinary(sql.MAX), req.file.buffer)
       .input('u', sql.Int, req.user.id)
       .query(`INSERT INTO assessment_attachments(assessment_id, checklist_item_id, file_name, file_type, file_data, uploaded_by)
-              OUTPUT INSERTED.id, INSERTED.file_name, INSERTED.uploaded_at VALUES (@a,@i,@name,@type,@data,@u)`);
+              OUTPUT INSERTED.id, INSERTED.file_name, INSERTED.file_type, INSERTED.uploaded_at VALUES (@a,@i,@name,@type,@data,@u)`);
     await writeAudit(pool, req.user.id, 'assessment_attachment', inserted.recordset[0].id, 'upload', null, { file: req.file.originalname, itemId });
     res.status(201).json(inserted.recordset[0]);
   } catch (err) { next(err); }

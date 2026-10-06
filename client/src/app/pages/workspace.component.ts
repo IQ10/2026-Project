@@ -53,6 +53,8 @@ export class WorkspaceComponent {
   query = '';
   saveState = signal('Saved');
   errors = signal<{ itemNumber: number; message: string }[]>([]);
+  uploading = signal<number | null>(null);
+  previews = signal<Record<number, string>>({});
   risks = signal<{ id: number; code: string; name: string }[]>([]);
   options = signal<{ code: string; label: string; selectable_by_surveyor: boolean }[]>([]);
   private timers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -71,6 +73,7 @@ export class WorkspaceComponent {
         detail.assessment.assessment_date = String(detail.assessment.assessment_date).slice(0, 10);
         this.detail.set(detail);
         this.failed.set('');
+        this.loadPreviews(detail);
       },
       error: (err) => this.failed.set(errorText(err))
     });
@@ -165,17 +168,72 @@ export class WorkspaceComponent {
     });
   }
 
-  upload(item: ChecklistItem, event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    const data = new FormData();
-    data.append('file', file);
-    data.append('checklist_item_id', String(item.checklist_item_id));
+  async upload(item: ChecklistItem, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const original = input.files?.[0];
+    input.value = '';
+    if (!original) return;
     const id = this.detail()?.assessment.id;
-    this.http.post<{ id: number; file_name: string }>(`/api/assessments/${id}/attachments`, data).subscribe({
-      next: (row) => { item.attachments = [...item.attachments, row]; this.toast.show('File stored with the assessment'); },
-      error: (err) => this.toast.show(errorText(err), 'bad')
+    if (!id) return;
+    this.uploading.set(item.id);
+    try {
+      const file = await this.preparePhoto(original, item.item_number);
+      const data = new FormData();
+      data.append('file', file);
+      data.append('checklist_item_id', String(item.checklist_item_id));
+      const row = await new Promise<{ id: number; file_name: string; file_type?: string }>((resolve, reject) => {
+        this.http.post<{ id: number; file_name: string; file_type?: string }>(`/api/assessments/${id}/attachments`, data).subscribe({ next: resolve, error: reject });
+      });
+      item.attachments = [...item.attachments, row];
+      this.previews.update((current) => ({ ...current, [row.id]: URL.createObjectURL(file) }));
+      this.toast.show('Photo saved with this checklist item');
+    } catch (err) {
+      const message = err && typeof err === 'object' && 'status' in err ? errorText(err) : err instanceof Error ? err.message : errorText(err);
+      this.toast.show(message, 'bad');
+    } finally {
+      this.uploading.set(null);
+    }
+  }
+
+  private loadPreviews(detail: Detail) {
+    for (const section of detail.sections) {
+      for (const item of section.items) {
+        for (const file of item.attachments) {
+          if (this.isImage(file) && !this.previews()[file.id]) this.fetchPreview(detail.assessment.id, file.id);
+        }
+      }
+    }
+  }
+
+  private fetchPreview(assessmentId: number, attachmentId: number) {
+    this.http.get(`/api/assessments/${assessmentId}/attachments/${attachmentId}`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        if (!blob.type.startsWith('image/')) return;
+        this.previews.update((current) => ({ ...current, [attachmentId]: URL.createObjectURL(blob) }));
+      }
     });
+  }
+
+  private isImage(file: { file_name: string; file_type?: string | null }) {
+    return (file.file_type || '').startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.file_name);
+  }
+
+  private async preparePhoto(file: File, itemNumber: number): Promise<File> {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
+    if (!bitmap) throw new Error('This photo could not be read. Use Take photo on the phone or tablet camera.');
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('This photo could not be read. Use Take photo on the phone or tablet camera.');
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+    if (!blob) throw new Error('This photo could not be read. Use Take photo on the phone or tablet camera.');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return new File([blob], `item-${itemNumber}-${stamp}.jpg`, { type: 'image/jpeg' });
   }
 
   openFile(attachmentId: number) {

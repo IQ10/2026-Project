@@ -114,11 +114,30 @@
                     <div class="col-md-8"><label class="form-label">Surveyor remarks</label><input class="form-control" [(ngModel)]="item.remarks" [name]="'m' + item.id" [disabled]="!editable()" (ngModelChange)="queue(item)"></div>
                   </div>
                   @if (editable()) {
-                    <label class="btn btn-sm btn-outline-secondary mt-2">Add evidence<input type="file" hidden (change)="upload(item, $event)"></label>
+                    <div class="evidence-actions">
+                      <label class="btn btn-sm btn-outline-secondary">
+                        Take photo
+                        <input type="file" accept="image/*" capture="environment" hidden [disabled]="uploading() === item.id" (change)="upload(item, $event)">
+                      </label>
+                      <label class="btn btn-sm btn-outline-secondary">
+                        Choose photo
+                        <input type="file" accept="image/*" hidden [disabled]="uploading() === item.id" (change)="upload(item, $event)">
+                      </label>
+                      @if (uploading() === item.id) { <span class="small text-secondary">Saving photo…</span> }
+                    </div>
                   }
                 }
-                @for (file of item.attachments; track file.id) {
-                  <button class="btn btn-link btn-sm" type="button" (click)="openFile(file.id)">{{ file.file_name }}</button>
+                @if (item.attachments.length) {
+                  <div class="evidence-row">
+                    @for (file of item.attachments; track file.id) {
+                      <figure>
+                        @if (previews()[file.id]; as src) {
+                          <button type="button" class="thumb" (click)="openFile(file.id)"><img [src]="src" [alt]="file.file_name"></button>
+                        }
+                        <button class="btn btn-link btn-sm p-0" type="button" (click)="openFile(file.id)">{{ file.file_name }}</button>
+                      </figure>
+                    }
+                  </div>
                 }
                 @if (auth.has('masters.manage') && editable()) {
                   <div class="mt-2">

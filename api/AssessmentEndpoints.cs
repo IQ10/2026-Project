@@ -542,17 +542,17 @@ public static class AssessmentEndpoints
             if (!ctx.Request.HasFormContentType) throw new ApiException(400, "Choose a file to upload.");
             var form = await ctx.Request.ReadFormAsync();
             var file = form.Files["file"] ?? throw new ApiException(400, "Choose a file to upload.");
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp", "application/pdf" };
-            if (!allowed.Contains(file.ContentType)) throw new ApiException(400, "Upload a JPEG, PNG, WEBP or PDF file.");
-            if (file.Length > 8 * 1024 * 1024) throw new ApiException(400, "Upload a JPEG, PNG, WEBP or PDF file.");
+            var contentType = PhotoType(file.ContentType, file.FileName);
+            if (contentType == null) throw new ApiException(400, "Upload a JPEG, PNG or WEBP photo.");
+            if (file.Length > 12 * 1024 * 1024) throw new ApiException(400, "That photo is too large. Take it again or choose a smaller image.");
             await using var buffer = new MemoryStream();
             await file.CopyToAsync(buffer);
             int? itemId = int.TryParse(form["checklist_item_id"], out var parsed) ? parsed : null;
             var inserted = Rows.One(await conn.QueryAsync("""
                 INSERT INTO assessment_attachments(assessment_id, checklist_item_id, file_name, file_type, file_data, uploaded_by)
-                OUTPUT INSERTED.id, INSERTED.file_name, INSERTED.uploaded_at
+                OUTPUT INSERTED.id, INSERTED.file_name, INSERTED.file_type, INSERTED.uploaded_at
                 VALUES (@a,@i,@name,@type,@data,@u)
-                """, new { a = id, i = itemId, name = file.FileName, type = file.ContentType, data = buffer.ToArray(), u = user.Id }));
+                """, new { a = id, i = itemId, name = file.FileName, type = contentType, data = buffer.ToArray(), u = user.Id }));
             await Audit.Write(conn, null, user.Id, "assessment_attachment", inserted!["id"], "upload", null, new Dictionary<string, object?> { ["file"] = file.FileName, ["itemId"] = itemId });
             return Results.Json(inserted, statusCode: 201);
         });
@@ -718,4 +718,19 @@ public static class AssessmentEndpoints
     }
 
     private static CurrentUser Current(HttpContext ctx) => (CurrentUser)ctx.Items["user"]!;
+
+    private static string? PhotoType(string? contentType, string fileName)
+    {
+        var type = (contentType ?? "").Split(';')[0].Trim().ToLowerInvariant();
+        if (type is "image/jpg") type = "image/jpeg";
+        if (type is "image/jpeg" or "image/png" or "image/webp") return type;
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => null
+        };
+    }
 }

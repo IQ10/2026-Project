@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Dapper;
@@ -139,10 +140,11 @@ public static class Audit
 public static class Tokens
 {
     public static string Secret => Environment.GetEnvironmentVariable("JWT_SECRET") ?? "esa-desk-dev-secret-change-me";
+    private static byte[] KeyBytes => SHA256.HashData(Encoding.UTF8.GetBytes(Secret));
 
     public static string Sign(CurrentUser user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret));
+        var key = new SymmetricSecurityKey(KeyBytes);
         var payload = new JwtPayload
         {
             ["id"] = user.Id,
@@ -166,7 +168,7 @@ public static class Tokens
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret)),
+            IssuerSigningKey = new SymmetricSecurityKey(KeyBytes),
             ClockSkew = TimeSpan.FromMinutes(1),
             NameClaimType = ClaimTypes.Name
         }, out _);

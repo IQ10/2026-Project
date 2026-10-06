@@ -68,7 +68,7 @@ export interface ChecklistItem {
   review_remarks: string | null;
   locked_na: boolean;
   source_review: boolean;
-  attachments: { id: number; file_name: string }[];
+  attachments: { id: number; file_name: string; file_type?: string | null }[];
 }
 
 export interface ChecklistSection {

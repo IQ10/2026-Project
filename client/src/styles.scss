@@ -110,6 +110,12 @@ button, input, select, textarea { font: inherit; }
 .response-row button.selected.NON_COMPLIANT { background: #9d2c2c; color: white; border-color: #9d2c2c; }
 .response-row button.selected.PARTIAL { background: #8a5a00; color: white; border-color: #8a5a00; }
 .response-row button.selected.NA { background: #5c6b7a; color: white; }
+.evidence-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.evidence-actions .btn { min-height: 44px; }
+.evidence-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.evidence-row figure { margin: 0; max-width: 140px; }
+.evidence-row .thumb { border: 0; padding: 0; background: transparent; }
+.evidence-row img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
 .toast-stack { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; flex-direction: column; gap: 8px; }
 .toast-item { background: var(--navy); color: white; border-radius: 12px; padding: 10px 14px; min-width: 220px; }
 .toast-item.bad { background: var(--bad); }
