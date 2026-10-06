@@ -5,3 +5,7 @@ uploads/
 *.log
 .env
 server/.env
+api/bin/
+api/obj/
+api/publish/
+api/.env

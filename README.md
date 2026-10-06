@@ -6,63 +6,68 @@ The first template is the electrical safety checklist from the Sunny Toyota, Agr
 
 ## Run locally
 
-1. Start SQL Server and create the database with the script in `database/001_schema.sql`, or use the included container:
+The API is an ASP.NET Core service in `api`. It uses the same SQL Server database and the same `/api` routes as the Angular app.
 
-```bash
-docker compose up -d
+1. Install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). SQL Server must already be running.
+
+2. In SQL Server Management Studio, run these scripts in order:
+
+1. `database/001_schema.sql` creates the empty database and tables.
+2. `database/002_data.sql` fills dealers, the checklist, users, and the three sample assessments.
+
+3. Point the API at SQL Server. Create `api\.env`:
+
 ```
-
-2. Point the API at that server. Defaults match the container:
-
-```
-DB_SERVER=127.0.0.1
+DB_SERVER=localhost
 DB_PORT=1433
 DB_USER=sa
 DB_PASSWORD=Esa@Sql#2026!
 DB_NAME=EsaManagement
 ```
 
-If SQL Server is already installed on your machine, set those variables to your instance and sign-in. The API does not create a login for you.
+Use the TCP port for your instance. Do not put `SQLEXPRESS` in `DB_SERVER`. On Windows Command Prompt, do not use `export`.
 
-3. Load masters and the checklist.
+4. Start the API:
 
-In SQL Server Management Studio, open and run these two scripts in order:
-
-1. `database/001_schema.sql` creates the empty database and tables.
-2. `database/002_data.sql` fills dealers, the 165-item checklist, users, and the three sample assessments.
-
-Or load the same data from the API folder:
-
-```bash
-cd server
-npm install
-npm run seed
-npm start
+```bat
+cd api
+dotnet run
 ```
 
-4. Start the Angular app:
+It listens on port **4317**. Browse http://127.0.0.1:4317/api/health . A working service returns `{"ok":true,"database":"SQL Server"}`.
 
-```bash
+5. Start the Angular app:
+
+```bat
 cd client
 npm install
-npx ng serve --port 4318 --host 0.0.0.0
+npx ng serve --port 4318
 ```
 
-Open http://127.0.0.1:4318 . The API listens on port 4317. The dev server proxies `/api` to it.
+Open http://127.0.0.1:4318 . The dev server proxies `/api` to port 4317.
 
-## Host the API in local IIS
+To use another port, set `PORT` before `dotnet run`, for example `set PORT=3000`.
 
-The API is Node.js. IIS starts `node.exe` with `server/web.config`. Stop any `npm start` window first so port 4317 is free.
+## Host the API in IIS
 
-1. Install [Node.js](https://nodejs.org/) and, in IIS, install [HttpPlatformHandler](https://www.iis.net/downloads/microsoft/httpplatformhandler).
-2. In the `server` folder run `npm install` once.
-3. Edit `server/web.config` if your SQL login is not `sa` / `Esa@Sql#2026!`.
-4. In IIS Manager, add an Application Pool named `EsaApi`. Set .NET CLR version to **No Managed Code**.
-5. Add a Website named `EsaApi`. Set the physical path to the `server` folder, the binding to `http` and port **4317**, and the application pool to `EsaApi`.
-6. Give the application pool identity permission to read the `server` folder and write to `server\logs`.
-7. Browse http://127.0.0.1:4317/api/health . A working site returns `{"ok":true,"database":"SQL Server"}`.
+Stop any Node `npm start` window and any PM2 process that is using the API port. IIS hosts the .NET service directly.
 
-If the health page fails, open the newest file in `server\logs`. The Angular app on port 4318 can keep using this IIS site because it still calls port 4317.
+1. Install the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) and restart IIS (`iisreset`).
+2. Publish the service:
+
+```bat
+cd api
+dotnet publish -c Release -o C:\inetpub\esa-api
+```
+
+3. Copy `api\.env` into `C:\inetpub\esa-api` so the site can read the SQL login.
+4. In IIS Manager, add an application pool named `EsaApi`. Set **.NET CLR version** to **No Managed Code**.
+5. Add a website named `EsaApi`. Set the physical path to `C:\inetpub\esa-api`, the binding to the port you want (for example **3000**), and the application pool to `EsaApi`.
+6. Browse `http://127.0.0.1:3000/api/health`.
+
+The Angular IIS site stays separate. Its `web.config` forwards `/api` to this site, for example `http://192.168.1.111:3000/api/{R:1}`.
+
+The `server` folder is the earlier Node API. It is not the service to host. `npm run seed` in that folder can still reload sample data when the `database` folder sits next to it.
 
 ## Sign-in
 
