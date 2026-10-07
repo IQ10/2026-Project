@@ -34,7 +34,7 @@ cd api
 dotnet run
 ```
 
-It listens on port **4317**. Browse http://127.0.0.1:4317/api/health . A working service returns `{"ok":true,"database":"SQL Server"}`.
+It listens on port **4317**. The console window is the host process. Open the REST API in the browser at http://127.0.0.1:4317/swagger . The health check is http://127.0.0.1:4317/api/health and returns `{"ok":true,"database":"SQL Server"}`.
 
 5. Start the Angular app:
 
@@ -63,7 +63,7 @@ dotnet publish -c Release -o C:\inetpub\esa-api
 3. Copy `api\.env` into `C:\inetpub\esa-api` so the site can read the SQL login.
 4. In IIS Manager, add an application pool named `EsaApi`. Set **.NET CLR version** to **No Managed Code**.
 5. Add a website named `EsaApi`. Set the physical path to `C:\inetpub\esa-api`, the binding to the port you want (for example **3000**), and the application pool to `EsaApi`.
-6. Browse `http://127.0.0.1:3000/api/health`.
+6. Browse `http://127.0.0.1:3000/swagger` for the REST API page, or `http://127.0.0.1:3000/api/health` for the health check.
 
 The Angular IIS site stays separate. Its `web.config` forwards `/api` to this site, for example `http://192.168.1.111:3000/api/{R:1}`.
 

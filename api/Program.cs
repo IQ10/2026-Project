@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dapper;
 using Esa.Api;
+using Microsoft.OpenApi;
 
 DotEnv.Load();
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APP_POOL_ID")))
@@ -18,10 +19,41 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
 });
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ESA Desk API",
+        Version = "v1",
+        Description = "REST API for electrical safety assessments. Sign in with POST /api/auth/login, then send the token as Bearer authorization."
+    });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Token returned by POST /api/auth/login"
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 12 * 1024 * 1024);
 
 var app = builder.Build();
 var db = new Database();
+
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "ESA Desk API");
+    options.DocumentTitle = "ESA Desk API";
+});
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.UseCors();
 app.Use(async (ctx, next) =>
